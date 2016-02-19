@@ -1,0 +1,64 @@
+﻿@model IEnumerable<Conference.Models.SearchResults>
+
+<link href="~/Content/themes/base/minified/jquery-ui.min.css" rel="stylesheet"/>
+
+
+<label>Search over a simulated set of products, simulating a long running query, with periodic updates to the client.
+    <br>Results shown are the ones matching the following conditions: Stock>2, Price between $500 and $1500
+</label>
+<br><br>
+    <div>
+        <button type="button" id="search">Start Search</button>
+        <button type="button" id="stop" style="display: none;">Stop Search</button>
+    </div>
+
+    <label id="progressBarDescription">
+        <span id="progressPercent">0</span>% (<span id="progressAnalized">0</span> of <span id="progressTotal">0</span> products analized). <br/>Products found:<span id="productsFound">0</span>
+    </label>
+
+<ul id="results-list"></ul>
+
+
+<script>
+    $(function() {
+        var resultsHub = $.connection.resultsHub;
+
+        // register the update method so the server can call this
+        resultsHub.client.update = function (searchResults) {
+            $("#search").hide();
+            $("#stop").show();
+            $("#progressTotal").text(searchResults.Total);
+            $("#progressAnalized").text(searchResults.Processed);
+            $("#progressPercent").text(((searchResults.Processed / searchResults.Total) * 100).toFixed(2));
+
+            var productsFound = parseInt($("#productsFound").text());
+            productsFound = productsFound + searchResults.Results.length;
+            $("#productsFound").text(productsFound);
+            //var processed = "<li>" + results.Total + "</li>";
+            for (var i = 0; i < searchResults.Results.length; i++) {
+                var productSelected = "<li>" + searchResults.Results[i].Name + ", Price: " + searchResults.Results[i].Price + "$, Stock: " + searchResults.Results[i].Stock + "</li>";
+                $("#results-list").append(productSelected);
+            }
+
+        };
+
+        $.connection.hub.start().done(function() {
+            resultsHub.server.register();
+
+            $("#search").click(function() {
+                $("#progressTotal").text("0");
+                $("#progressAnalized").text("0");
+                $("#progressPercent").text("0");
+                $("#results-list").empty();
+                $("#search").hide();
+                $("#stop").show();
+                resultsHub.server.performSearch();
+            });
+            $("#stop").click(function() {
+                $("#search").show();
+                $("#stop").hide();
+                resultsHub.server.stopSearch();
+            });
+        });
+    });
+</script>
